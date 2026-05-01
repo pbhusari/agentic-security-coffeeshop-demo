@@ -332,6 +332,21 @@
   .out-response { color: #e6edf3; border-left: 2px solid #30363d; padding-left: 8px; margin: 6px 0; }
   .out-meta    { color: #6e7681; }
   .out-empty   { color: #6e7681; text-align: center; padding: 40px 20px; }
+
+  .clear-btn {
+    margin-left: 10px;
+    background: transparent;
+    border: 1px solid #30363d;
+    color: #6e7681;
+    font-family: inherit;
+    font-size: 10px;
+    padding: 1px 7px;
+    border-radius: 3px;
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .clear-btn:hover { border-color: #f85149; color: #f85149; }
 </style>
 </head>
 <body>
@@ -351,7 +366,7 @@
 <div class="page visible" id="page-log">
 
   <div class="panel" id="log-panel">
-    <div class="panel-header">Decision Log — all PDP verdicts, newest first</div>
+    <div class="panel-header">Decision Log — all PDP verdicts, newest first <button id="btn-clear-log" class="clear-btn">Clear</button></div>
     <div id="log-list">
       <div id="empty-state">No decisions yet. Start the agent to see verdicts.</div>
     </div>
@@ -421,6 +436,7 @@
     <div id="lab-output-header">
       Agent output
       <div id="lab-spinner"></div>
+      <button id="btn-clear-lab" class="clear-btn" style="margin-left:auto">Clear</button>
     </div>
     <div id="lab-output">
       <div class="out-empty">Pick a preset or enter a prompt and hit Run.</div>
@@ -538,6 +554,22 @@
     note.textContent = `⚡ Last fired: ${checkName}`;
     pre.appendChild(note);
   }
+
+  // --- Clear buttons ---
+  document.getElementById('btn-clear-log').addEventListener('click', () => {
+    logList.innerHTML = '<div id="empty-state">No decisions yet. Start the agent to see verdicts.</div>';
+    state.allow = 0; state.flag = 0; state.block = 0;
+    document.getElementById('cnt-allow').textContent = '0';
+    document.getElementById('cnt-flag').textContent  = '0';
+    document.getElementById('cnt-block').textContent = '0';
+    document.getElementById('last-tool').textContent    = '—';
+    document.getElementById('last-verdict').textContent = '—';
+    document.getElementById('last-check').textContent   = '—';
+  });
+
+  document.getElementById('btn-clear-lab').addEventListener('click', () => {
+    labOutput.innerHTML = '<div class="out-empty">Pick a preset or enter a prompt and hit Run.</div>';
+  });
 
   const evtSrc = new EventSource('/events');
   const statusEl = document.getElementById('status');

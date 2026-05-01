@@ -305,6 +305,5 @@ Any agent built on MCP gets enforcement without code changes.
 - ✅ Offline-capable — Ollama + qwen2.5:3b, no internet dependency during demo
 
 **Next**
-- MCP middleware — PEP at the protocol boundary, zero agent code changes
-- Multi-agent correlation — trace injection across agent handoffs
-- Semantic provenance — paraphrase-resistant tokens for evasion-hardening
+- MCP tooling integration — PEP at the protocol boundary, enforcement without agent code changes
+- LLM-as-judge — lightweight SFT'd models as a fourth check layer, filling the semantic gap that pattern matching misses

@@ -58,11 +58,16 @@ verdict: allow / block
 
 The PEP and PDP run in **separate processes**. The agent has no policy knowledge. The PDP has no knowledge of the task. Policy is centralized, auditable, independently testable.
 
+**Code layout mirrors the architecture:**
+- `policy.py` — pure evaluation functions, no HTTP, no state. The three checks live here.
+- `sensor.py` — thin FastAPI layer. Owns session state, decision log, SSE feed.
+- `policy/` — one YAML file per control, each self-documenting with its OWASP/MITRE mapping.
+
 ---
 
 ## Three Checks
 
-**Check 1 — Egress allowlist** (`policy.yaml`)
+**Check 1 — Egress allowlist** (`policy/egress.yaml`)
 Declares which destinations each tool may contact. Any call to an undeclared host is blocked before execution. Near-zero false positives — binary allowlist.
 - OWASP **AA02** mitigation: *Constrain tool and resource scope via least-privilege policy*
 - OWASP **AA06** mitigation: *Prevent unauthorized data exfiltration via egress controls*
@@ -96,20 +101,24 @@ Toggle in the dashboard header. Run the same attack in both modes to see the con
 ```bash
 # Start PDP + open dashboard
 ./run.sh
+```
 
-# Attack Lab tab in the dashboard — run or replay without a terminal
-# http://localhost:8888
+Open **http://localhost:8888**.
 
-# Or from CLI:
+- **Decision Log tab** — live SSE feed of every PDP verdict; counters, last check fired, policy panel with per-control cards
+- **Attack Lab tab** — pick a preset or type a prompt, hit Replay (deterministic) or Run live (Ollama); streamed output, no terminal needed
+- **Mode toggle** — switch Active ↔ Monitor in the header; run the same attack in both to see the contrast
+
+```bash
+# CLI alternative
 source .venv/bin/activate
-python agent.py --replay traces/attack.json   # deterministic, no LLM needed
-python agent.py --prompt "Summarize my unread emails."  # live Ollama (qwen2.5:3b)
+python agent.py --replay traces/attack.json          # deterministic, no LLM
+python agent.py --prompt "Summarize my unread emails."  # live (requires Ollama + qwen2.5:3b)
 ```
 
 ```bash
 # Tests — no Ollama required
-pytest tests/ -v
-# 22 tests: egress · prompt carrier · provenance token
+pytest tests/ -v   # 22 tests: egress · prompt carrier · provenance token
 ```
 
 ---

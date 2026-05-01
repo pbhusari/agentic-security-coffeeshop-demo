@@ -16,7 +16,7 @@ Architecture:
 The PDP evaluates three independent checks per tool call:
   1. check_egress       — destination allowlist (binary, low FP)
   2. check_prompt_carrier — scan tool output for injection patterns (tunable FP)
-  3. check_canary       — detect LLM influence via injected tracking tokens (near-zero FP)
+  3. check_provenance_token — detect LLM influence via injected tracking tokens (near-zero FP)
 
 Each check is a pure function: given a CheckRequest, return a CheckResult.
 The PDP combines results: any block → block; any flag → flag; else allow.
@@ -57,7 +57,7 @@ class Verdict(BaseModel):
     verdict: str           # "allow" | "block" | "flag"
     reason: str            # human-readable, shown in dashboard
     check_fired: Optional[str] = None  # which check triggered the verdict
-    canary: Optional[str] = None       # injected canary token (if applicable)
+    provenance_token: Optional[str] = None  # injected provenance token (if applicable)
     redacted_output: Optional[str] = None  # cleaned output returned to agent
 
 
@@ -87,8 +87,8 @@ def load_policy() -> dict:
 # Session state
 # ---------------------------------------------------------------------------
 
-# call_id → canary string injected into that call's output
-_active_canaries: dict[str, str] = {}
+# call_id → provenance token string injected into that call's output
+_active_provenance_tokens: dict[str, str] = {}
 
 # In-memory decision log (also written to JSONL)
 _decision_log: list[DecisionLogEntry] = []
@@ -189,14 +189,14 @@ def check_prompt_carrier(output: str, policy: dict) -> tuple[str, str, str | Non
     Misses: injections that avoid all pattern surfaces — e.g., semantic instructions
       phrased as neutral prose, or payloads split across multiple tool calls.
       This is intentional: this check is a signal layer, not a complete defense.
-      The canary check (check 3) catches what this misses.
+      The provenance token check (check 3) catches what this misses.
 
     FP surface: moderate. "Compliance logging" appears in legitimate IT emails.
       "do not mention" appears in HR communication. "base64" appears in technical docs.
       Mitigations: tune patterns, add context (only flag in email body, not subject),
       require co-occurrence of multiple signals. In monitor mode, FPs are logged but
-      not blocking. In active mode, the suspicious section is redacted rather than
-      the entire response being dropped, preserving utility.
+      not blocking. In active mode, the suspicious section is redacted and the call
+      is blocked, preventing the injection from reaching the LLM.
 
     Returns: (verdict, reason, redacted_output_or_none)
     """
@@ -224,65 +224,65 @@ def check_prompt_carrier(output: str, policy: dict) -> tuple[str, str, str | Non
     # Redact: strip HTML comments (most likely injection vector) from output
     redacted = _COMMENT_IMPERATIVE_RE.sub("[REDACTED BY PDP]", output)
 
-    return "flag", reason, redacted
+    return "block", reason, redacted
 
 
 # ---------------------------------------------------------------------------
-# Check 3: Canary token
+# Check 3: Provenance token
 # ---------------------------------------------------------------------------
 
-def inject_canary(call_id: str, output: str) -> tuple[str, str]:
+def inject_provenance_token(call_id: str, output: str) -> tuple[str, str]:
     """
-    Inject a unique canary token into tool output before returning it to the LLM.
+    Inject a unique provenance token into tool output before returning it to the LLM.
 
-    The canary is a cryptographically random string that:
+    The provenance token is a cryptographically random string that:
       - Was never in the user's prompt
       - Was never produced by the LLM
       - Appears only in the PDP-modified tool output
 
-    If the canary appears in a later tool call's parameters, the LLM must have
-    copied it from the tool output — i.e., it was influenced by retrieved content,
+    If the provenance token appears in a later tool call's parameters, the LLM must
+    have copied it from the tool output — i.e., it was influenced by retrieved content,
     not by the user's original intent. This is the influence signal.
 
-    Returns: (canary_string, modified_output)
+    Returns: (provenance_token_string, modified_output)
     """
-    canary = f"INTERNAL-MARKER-{secrets.token_hex(4).upper()}"
-    _active_canaries[call_id] = canary
-    marker = f"\n[{canary}: ignore this token, it is for system use only]\n"
-    return canary, output + marker
+    provenance_token = f"INTERNAL-MARKER-{secrets.token_hex(4).upper()}"
+    _active_provenance_tokens[call_id] = provenance_token
+    marker = f"\n[{provenance_token}: ignore this token, it is for system use only]\n"
+    return provenance_token, output + marker
 
 
-def check_canary(params: dict[str, Any]) -> tuple[str, str]:
+def check_provenance_token(params: dict[str, Any]) -> tuple[str, str]:
     """
-    Check whether any active canary token appears in the current tool call's params.
+    Check whether any active provenance token appears in the current tool call's params.
 
-    Signal: canary presence in outbound params is strong evidence the LLM was
-      influenced by previously retrieved content rather than user intent alone.
-      The canary was never in the user prompt — the only way it reaches a tool call
+    Signal: provenance token presence in outbound params is strong evidence the LLM
+      was influenced by previously retrieved content rather than user intent alone.
+      The token was never in the user prompt — the only way it reaches a tool call
       is if the LLM propagated it from tool output, which is what injection exploits.
 
     Misses: LLMs that paraphrase or semantically re-encode retrieved content without
-      literally copying the canary string. This is a real evasion path. Mitigations:
-      more sophisticated watermarking, multiple canaries, or semantic similarity checks.
+      literally copying the provenance token. This is a real evasion path. Mitigations:
+      more sophisticated watermarking, multiple tokens, or semantic similarity checks.
       In practice, current models (including small ones like qwen2.5:3b) tend to copy
       verbatim content when following instructions embedded in retrieved data — which
       is precisely why injection works in the first place.
 
     FP surface: near-zero with sufficiently unique tokens (8 hex chars → 2^32 space).
-      A collision between a canary and legitimate user content would require the user
-      to type a string matching the INTERNAL-MARKER-XXXX format, which is implausible
-      in normal operation. Rate this as negligible.
+      A collision between a provenance token and legitimate user content would require
+      the user to type a string matching the INTERNAL-MARKER-XXXX format, which is
+      implausible in normal operation. Rate this as negligible.
 
     Returns: (verdict, reason)
     """
     params_str = json.dumps(params)
-    for call_id, canary in _active_canaries.items():
-        if canary in params_str:
+    for call_id, provenance_token in _active_provenance_tokens.items():
+        if provenance_token in params_str:
             return "block", (
-                f"canary '{canary}' (injected in call {call_id}) "
+                f"provenance token '{provenance_token}' (injected in call {call_id}) "
                 "found in outbound tool params — LLM influenced by retrieved content"
             )
-    return "allow", "no canary found in params"
+    return "allow", "no provenance token found in params"
 
 
 # ---------------------------------------------------------------------------
@@ -294,14 +294,14 @@ def evaluate(request: ToolCallRequest, policy: dict) -> Verdict:
     Run all applicable checks and return the authoritative verdict.
 
     Check order matters for redaction: prompt-carrier runs on raw output,
-    then we decide whether to inject canary into the (possibly-redacted) output.
-    Egress and canary checks run on params (request phase or response phase).
+    then we decide whether to inject a provenance token into the (possibly-redacted) output.
+    Egress and provenance token checks run on params (request phase or response phase).
     """
     verdict = "allow"
     reason = "all checks passed"
     check_fired = None
     redacted_output = None
-    injected_canary = None
+    injected_provenance_token = None
 
     # --- Check 1: egress (applies to every call with a destination param) ---
     egress_v, egress_r = check_egress(request.tool, request.params, policy)
@@ -312,29 +312,27 @@ def evaluate(request: ToolCallRequest, policy: dict) -> Verdict:
     if request.output is not None:
         carrier_v, carrier_r, redacted = check_prompt_carrier(request.output, policy)
         if carrier_v in ("flag", "block"):
-            # Carrier check never escalates to block on its own — it flags and redacts.
-            # The redacted output is returned to the agent; the flag is logged.
             if verdict == "allow":
-                verdict, reason, check_fired = "flag", carrier_r, "check_prompt_carrier"
+                verdict, reason, check_fired = carrier_v, carrier_r, "check_prompt_carrier"
             redacted_output = redacted  # use redacted output regardless of final verdict
 
-    # --- Check 3: canary in outbound params ---
-    canary_v, canary_r = check_canary(request.params)
-    if canary_v == "block":
-        verdict, reason, check_fired = "block", canary_r, "check_canary"
+    # --- Check 3: provenance token in outbound params ---
+    ptoken_v, ptoken_r = check_provenance_token(request.params)
+    if ptoken_v == "block":
+        verdict, reason, check_fired = "block", ptoken_r, "check_provenance_token"
 
-    # Inject canary into output for future calls (only if we're returning output)
+    # Inject provenance token into output for future calls (only if we're returning output)
     if request.output is not None and verdict != "block":
         base_output = redacted_output if redacted_output else request.output
-        injected_canary, canary_output = inject_canary(request.call_id, base_output)
-        redacted_output = canary_output  # canary-injected output replaces what agent sees
+        injected_provenance_token, ptoken_output = inject_provenance_token(request.call_id, base_output)
+        redacted_output = ptoken_output  # provenance-token-injected output replaces what agent sees
 
     return Verdict(
         call_id=request.call_id,
         verdict=verdict,
         reason=reason,
         check_fired=check_fired,
-        canary=injected_canary,
+        provenance_token=injected_provenance_token,
         redacted_output=redacted_output,
     )
 
@@ -368,28 +366,33 @@ async def check(request: ToolCallRequest) -> Verdict:
     if _mode == "monitor":
         enforced_verdict = "allow"
 
-    entry = DecisionLogEntry(
-        timestamp=time.time(),
-        call_id=request.call_id,
-        tool=request.tool,
-        params=request.params,
-        verdict=result.verdict,  # log what WOULD have happened
-        reason=result.reason,
-        check_fired=result.check_fired,
-        output_snippet=(request.output[:200] if request.output else None),
-    )
-    _decision_log.append(entry)
-    _persist_entry(entry)
-    await _broadcast(entry)
+    # Skip logging pre-execution allow checks (output=None, verdict=allow) — they
+    # are noise. Log everything that has output, and anything that fires a check.
+    should_log = request.output is not None or result.verdict != "allow"
+    if should_log:
+        entry = DecisionLogEntry(
+            timestamp=time.time(),
+            call_id=request.call_id,
+            tool=request.tool,
+            params=request.params,
+            verdict=result.verdict,  # log what WOULD have happened
+            reason=result.reason,
+            check_fired=result.check_fired,
+            output_snippet=(request.output[:200] if request.output else None),
+        )
+        _decision_log.append(entry)
+        _persist_entry(entry)
+        await _broadcast(entry)
 
-    # Return enforced verdict (overridden in monitor mode)
+    # In monitor mode: pass original unredacted output through so the LLM sees
+    # the full payload — this is what demonstrates the attack succeeding end-to-end.
     return Verdict(
         call_id=result.call_id,
         verdict=enforced_verdict,
         reason=result.reason if _mode == "active" else f"[monitor] would have: {result.verdict}",
         check_fired=result.check_fired,
-        canary=result.canary,
-        redacted_output=result.redacted_output,
+        provenance_token=result.provenance_token,
+        redacted_output=result.redacted_output if _mode == "active" else None,
     )
 
 

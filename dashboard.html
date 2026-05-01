@@ -185,15 +185,60 @@
   #policy-panel   { grid-column: 2; grid-row: 2; }
   #policy-content { padding: 10px 12px; flex: 1; overflow-y: auto; }
 
-  pre {
-    white-space: pre-wrap;
-    word-break: break-word;
-    color: #e6edf3;
-    font-size: 12px;
-    line-height: 1.6;
+  /* Policy cards */
+  .policy-card {
+    margin: 8px;
+    border: 1px solid #30363d;
+    border-radius: 5px;
+    overflow: hidden;
+    transition: border-color 0.3s, box-shadow 0.3s;
   }
+  .policy-card.fired {
+    border-color: #d29922;
+    box-shadow: 0 0 8px rgba(210,153,34,0.3);
+  }
+  .policy-card-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    background: #161b22;
+    border-bottom: 1px solid #30363d;
+    cursor: pointer;
+    user-select: none;
+  }
+  .policy-card-header:hover { background: #1c2128; }
+  .policy-card-icon { font-size: 13px; }
+  .policy-card-title { font-size: 11px; font-weight: bold; color: #c9d1d9; letter-spacing: 0.04em; flex: 1; }
+  .policy-card-file  { font-size: 10px; color: #6e7681; font-style: italic; }
+  .policy-card-owasp { font-size: 9px; padding: 1px 5px; border-radius: 2px; background: #1a1a3a; color: #79c0ff; border: 1px solid #388bfd44; letter-spacing: 0.04em; }
+  .policy-card-fired-badge { font-size: 9px; padding: 1px 5px; border-radius: 2px; background: #2a1f00; color: #d29922; border: 1px solid #d29922; display: none; }
+  .policy-card.fired .policy-card-fired-badge { display: inline; }
+  .policy-card-body  { padding: 8px 10px; background: #0d1117; display: block; }
+  .policy-card-body.collapsed { display: none; }
 
-  .highlight-check { background: #2a1f00; border-left: 2px solid #d29922; padding-left: 4px; }
+  .policy-row { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 5px; gap: 8px; }
+  .policy-row:last-child { margin-bottom: 0; }
+  .policy-key   { color: #8b949e; font-size: 11px; flex-shrink: 0; }
+  .policy-val   { color: #e6edf3; font-size: 11px; text-align: right; word-break: break-all; }
+  .policy-val.mono { font-family: 'Courier New', monospace; color: #79c0ff; }
+
+  .policy-tag-list { display: flex; flex-wrap: wrap; gap: 4px; justify-content: flex-end; }
+  .policy-tag {
+    font-size: 10px;
+    padding: 1px 6px;
+    border-radius: 3px;
+    background: #161b22;
+    border: 1px solid #30363d;
+    color: #c9d1d9;
+    font-family: 'Courier New', monospace;
+  }
+  .policy-tag.host { border-color: #388bfd44; color: #79c0ff; background: #0d1b2e; }
+  .policy-tag.keyword { border-color: #d2992244; color: #d29922; background: #1e1800; }
+
+  .policy-tool-block { margin-bottom: 8px; }
+  .policy-tool-block:last-child { margin-bottom: 0; }
+  .policy-tool-name { font-size: 10px; color: #8b949e; margin-bottom: 3px; text-transform: uppercase; letter-spacing: 0.06em; }
 
   #empty-state { color: #6e7681; text-align: center; padding: 40px 20px; }
 
@@ -390,9 +435,9 @@
   </div>
 
   <div class="panel" id="policy-panel">
-    <div class="panel-header">Active Policy (policy.yaml)</div>
+    <div class="panel-header">Active Policy</div>
     <div id="policy-content">
-      <pre id="policy-pre">loading…</pre>
+      <div id="policy-cards">loading…</div>
     </div>
   </div>
 
@@ -482,10 +527,68 @@
   });
 
   // --- Policy panel ---
+  const CHECK_META = {
+    check_egress:           { card: 'card-egress',      label: '⚡ fired' },
+    check_prompt_carrier:   { card: 'card-carrier',     label: '⚡ fired' },
+    check_provenance_token: { card: 'card-provenance',  label: '⚡ fired' },
+  };
+
+  function tagsHtml(items, cls) {
+    return `<div class="policy-tag-list">${items.map(v => `<span class="policy-tag ${cls}">${escHtml(String(v))}</span>`).join('')}</div>`;
+  }
+
+  function policyRow(key, valHtml) {
+    return `<div class="policy-row"><span class="policy-key">${key}</span><div>${valHtml}</div></div>`;
+  }
+
+  function makeCard(id, icon, title, file, owasp, bodyHtml) {
+    return `
+    <div class="policy-card" id="${id}">
+      <div class="policy-card-header" onclick="this.nextElementSibling.classList.toggle('collapsed')">
+        <span class="policy-card-icon">${icon}</span>
+        <span class="policy-card-title">${title}</span>
+        <span class="policy-card-file">${file}</span>
+        <span class="policy-card-owasp">${owasp}</span>
+        <span class="policy-card-fired-badge">⚡ fired</span>
+      </div>
+      <div class="policy-card-body">${bodyHtml}</div>
+    </div>`;
+  }
+
   async function loadPolicy() {
     const r = await fetch('/policy');
     const d = await r.json();
-    document.getElementById('policy-pre').textContent = JSON.stringify(d, null, 2);
+    const container = document.getElementById('policy-cards');
+
+    // Card: Egress
+    const tools = d.egress?.tools || {};
+    const egressBody = Object.entries(tools).map(([tool, cfg]) => `
+      <div class="policy-tool-block">
+        <div class="policy-tool-name">${escHtml(tool)}</div>
+        ${tagsHtml(cfg.allowed_destinations || [], 'host')}
+      </div>`).join('');
+
+    // Card: Carrier
+    const keywords = d.carrier?.keywords || [];
+    const blobMin  = d.carrier?.base64_blob_min_length ?? 100;
+    const carrierBody =
+      policyRow('keywords', tagsHtml(keywords, 'keyword')) +
+      policyRow('base64 blob min', `<span class="policy-val mono">${blobMin} chars</span>`) +
+      policyRow('html comment + imperative', `<span class="policy-val">regex (hardcoded)</span>`);
+
+    // Card: Provenance
+    const prefix = d.provenance?.token_prefix ?? 'INTERNAL-MARKER';
+    const nbytes = d.provenance?.token_hex_bytes ?? 4;
+    const entropy = nbytes * 8;
+    const provBody =
+      policyRow('token format', `<span class="policy-val mono">${escHtml(prefix)}-[${nbytes * 2} hex]</span>`) +
+      policyRow('entropy', `<span class="policy-val">${entropy}-bit (2<sup>${entropy}</sup> space)</span>`) +
+      policyRow('signal', `<span class="policy-val">token in outbound params</span>`);
+
+    container.innerHTML =
+      makeCard('card-egress',     '🛡',  'Egress Allowlist',    'egress.yaml',     'AA02 · AA06', egressBody) +
+      makeCard('card-carrier',    '🔍', 'Prompt Carrier Scan', 'carrier.yaml',    'AA01 · AML.M0015', carrierBody) +
+      makeCard('card-provenance', '🔖', 'Provenance Token',    'provenance.yaml', 'AA01 · AML.M0020', provBody);
   }
 
   // --- Decision log via SSE ---
@@ -546,13 +649,13 @@
   }
 
   function highlightPolicyCheck(checkName) {
-    const pre = document.getElementById('policy-pre');
-    const text = pre.textContent;
-    pre.innerHTML = escHtml(text);
-    const note = document.createElement('div');
-    note.className = 'highlight-check';
-    note.textContent = `⚡ Last fired: ${checkName}`;
-    pre.appendChild(note);
+    // Clear all fired states
+    document.querySelectorAll('.policy-card.fired').forEach(c => c.classList.remove('fired'));
+    const meta = CHECK_META[checkName];
+    if (meta) {
+      const card = document.getElementById(meta.card);
+      if (card) card.classList.add('fired');
+    }
   }
 
   // --- Clear buttons ---

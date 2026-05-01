@@ -1,0 +1,12 @@
+# Check 3 — Provenance token (OWASP AA01, MITRE ATLAS AML.M0020)
+#
+# The PDP injects a unique random token into every tool output before it
+# reaches the LLM. If that token later appears in a tool call's params,
+# the LLM was influenced by retrieved content — the influence signal fires.
+#
+# token_prefix:  human-readable prefix prepended to the random hex bytes.
+# token_hex_bytes: entropy in bytes (4 bytes = 8 hex chars = 2^32 space).
+#   Collision with legitimate user content is negligible in normal operation.
+
+token_prefix: "INTERNAL-MARKER"
+token_hex_bytes: 4

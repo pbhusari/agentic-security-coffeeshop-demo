@@ -1,0 +1,4 @@
+# Global PDP configuration.
+# mode is the startup default — toggleable at runtime via POST /mode.
+
+mode: active  # active | monitor

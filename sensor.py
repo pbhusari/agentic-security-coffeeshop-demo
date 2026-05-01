@@ -456,6 +456,48 @@ async def get_policy() -> dict:
     return load_policy()
 
 
+@app.post("/run")
+async def run_agent(body: dict, request: Request) -> StreamingResponse:
+    """
+    Spawn agent.py as a subprocess and stream its stdout line-by-line as SSE.
+    Accepts: {"prompt": "...", "replay": false}
+    The dashboard Attack Lab tab subscribes to this stream.
+    """
+    prompt = body.get("prompt", "Summarize my unread emails.")
+    replay = body.get("replay", False)
+
+    agent_path = Path(__file__).parent / "agent.py"
+    python = Path(__file__).parent / ".venv" / "bin" / "python"
+    if not python.exists():
+        python = Path("python3")
+
+    if replay:
+        trace_path = Path(__file__).parent / "traces" / "attack.json"
+        cmd = [str(python), str(agent_path), "--replay", str(trace_path)]
+    else:
+        cmd = [str(python), str(agent_path), "--prompt", prompt]
+
+    async def stream():
+        proc = await asyncio.create_subprocess_exec(
+            *cmd,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.STDOUT,
+        )
+        yield f"data: {json.dumps({'type': 'start', 'prompt': prompt, 'replay': replay})}\n\n"
+        async for line in proc.stdout:
+            text = line.decode(errors="replace").rstrip()
+            if text:
+                yield f"data: {json.dumps({'type': 'line', 'text': text})}\n\n"
+        await proc.wait()
+        yield f"data: {json.dumps({'type': 'done', 'code': proc.returncode})}\n\n"
+
+    return StreamingResponse(
+        stream(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------

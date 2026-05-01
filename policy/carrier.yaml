@@ -1,0 +1,20 @@
+# Check 2 — Prompt-carrier scan (OWASP AA01, MITRE ATLAS AML.M0015)
+#
+# Keyword patterns matched case-insensitively against tool output.
+# A match triggers a block + redaction before the LLM sees the content.
+#
+# FP surface is moderate — tune patterns per deployment context.
+# Known FP cases are documented inline.
+
+keywords:
+  - "SYSTEM:"           # system-prompt framing
+  - "OVERRIDE"          # jailbreak prefix
+  - "ignore previous"   # instruction-overwrite idiom
+  - "do not mention"    # instruction-hiding pattern
+  - "compliance logging" # social-engineering framing (demo attack)
+  - "send to"           # FP risk: legitimate invoice/payment emails
+  - "post to"           # FP risk: legitimate HR/ops emails
+
+# HTML/XML comments with imperative verbs are matched via regex in policy.py.
+# Threshold for base64-blob detection (characters). Blobs shorter than this pass.
+base64_blob_min_length: 100

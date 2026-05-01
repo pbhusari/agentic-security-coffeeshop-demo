@@ -1,0 +1,18 @@
+# Check 1 — Egress allowlist (OWASP AA02, AA06)
+#
+# Declares the exact set of destinations each tool is permitted to contact.
+# Any call to an undeclared host is blocked before execution.
+# Version this file — a changed allowlist is an auditable event.
+#
+# Fields per tool:
+#   allowed_destinations: list of bare hostnames (no scheme, no path)
+
+tools:
+  read_email:
+    allowed_destinations: [mail.internal]
+
+  read_file:
+    allowed_destinations: [docs.internal, files.internal]
+
+  http_get:
+    allowed_destinations: [mail.internal, docs.internal]

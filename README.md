@@ -118,8 +118,13 @@ pytest tests/ -v
 
 ```
 agent.py                      Agent loop + PEP
-sensor.py                     PDP: policy checks, decision log, SSE feed, /run endpoint
-policy.yaml                   Declarative tool authorization policy
+sensor.py                     PDP: FastAPI routes, session state, SSE feed, /run endpoint
+policy.py                     Policy evaluation — pure functions, no HTTP, no state
+policy/
+  config.yaml                 Startup mode (active | monitor)
+  egress.yaml                 Check 1 — per-tool destination allowlists
+  carrier.yaml                Check 2 — prompt-carrier keywords + blob threshold
+  provenance.yaml             Check 3 — provenance token config
 inbox.json                    4 emails: 3 benign, 1 poisoned
 dashboard.html                Live dashboard — decision log, Attack Lab, mode toggle
 traces/attack.json            Deterministic replay trace

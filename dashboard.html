@@ -79,11 +79,11 @@
 
   /* Page views */
   .page { display: none; height: calc(100vh - 44px); }
-  .page.visible { display: flex; }
+  #page-log.visible  { display: grid; }
+  #page-lab.visible  { display: flex; }
 
   /* ── Decision Log page ── */
   #page-log {
-    display: grid;
     grid-template-columns: 1fr 320px;
     grid-template-rows: auto 1fr;
   }

@@ -1,3 +1,17 @@
+---
+marp: true
+theme: default
+style: |
+  section { font-size: 18px; }
+  h1 { font-size: 32px; }
+  h2 { font-size: 24px; }
+  h3 { font-size: 20px; }
+  code { font-size: 14px; }
+  pre  { font-size: 13px; }
+  table { font-size: 15px; }
+  blockquote { font-size: 16px; }
+---
+
 # Agentic Security Control Plane
 ### A runtime policy layer for autonomous agents
 
@@ -5,22 +19,20 @@
 
 ## Table of Contents
 
-| # | Slide | Time |
-|---|---|---|
-| 1 | Title | 0:00 |
-| 2 | The problem | 0:30 |
-| 3 | This is what an attack looks like | 1:30 |
-| 4 | What actually happens without a control plane | 2:30 |
-| 5 | What we built | 3:15 |
-| 6 | Check 1 — Egress allowlist | 4:00 |
-| 7 | Check 2 — Prompt carrier scan | 4:45 |
-| 8 | Check 3 — Provenance token | 5:30 |
-| 9 | Active vs. Monitor mode | 6:15 |
-| 10 | Live demo | 6:45 |
-| 11 | Why this architecture | 8:00 |
-| 12 | Where this sits in the stack | 8:45 |
-| 13 | What this maps to in production | 9:15 |
-| 14 | Status + next | 9:45 |
+- **1** · Title · `0:00`
+- **2** · The problem · `0:30`
+- **3** · This is what an attack looks like · `1:30`
+- **4** · What happens without a control plane · `2:30`
+- **5** · What we built · `3:15`
+- **6** · Check 1 — Egress allowlist · `4:00`
+- **7** · Check 2 — Prompt carrier scan · `4:45`
+- **8** · Check 3 — Provenance token · `5:30`
+- **9** · Active vs. Monitor mode · `6:15`
+- **10** · Live demo · `6:45`
+- **11** · Why this architecture · `8:00`
+- **12** · Where this sits in the stack · `8:45`
+- **13** · What this maps to in production · `9:15`
+- **14** · Status + next · `9:45`
 
 ---
 

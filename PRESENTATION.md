@@ -1,15 +1,165 @@
 ---
 marp: true
 theme: default
+paginate: true
 style: |
-  section { font-size: 18px; }
-  h1 { font-size: 32px; }
-  h2 { font-size: 24px; }
-  h3 { font-size: 20px; }
-  code { font-size: 14px; }
-  pre  { font-size: 13px; }
-  table { font-size: 15px; }
-  blockquote { font-size: 16px; }
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+  :root {
+    --color-bg: #ffffff;
+    --color-surface: #f6f8fa;
+    --color-border: #d0d7de;
+    --color-text: #1f2328;
+    --color-muted: #656d76;
+    --color-accent: #0969da;
+    --color-green: #1a7f37;
+    --color-red: #cf222e;
+    --color-amber: #9a6700;
+    --color-tag-bg: #ddf4ff;
+    --color-tag-text: #0550ae;
+    --color-code-bg: #f6f8fa;
+    --color-code-border: #d0d7de;
+  }
+
+  section {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-size: 17px;
+    line-height: 1.6;
+    color: var(--color-text);
+    background: var(--color-bg);
+    padding: 48px 56px;
+  }
+
+  section::after {
+    font-size: 12px;
+    color: var(--color-muted);
+  }
+
+  h1 {
+    font-size: 36px;
+    font-weight: 700;
+    color: var(--color-text);
+    border-bottom: 2px solid var(--color-border);
+    padding-bottom: 12px;
+    margin-bottom: 20px;
+  }
+
+  h2 {
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--color-text);
+    border-bottom: 1px solid var(--color-border);
+    padding-bottom: 8px;
+    margin-bottom: 16px;
+  }
+
+  h3 {
+    font-size: 19px;
+    font-weight: 600;
+    color: var(--color-text);
+    margin-bottom: 10px;
+  }
+
+  p { margin: 8px 0; }
+
+  strong { color: var(--color-text); font-weight: 600; }
+
+  em { color: var(--color-muted); }
+
+  a { color: var(--color-accent); text-decoration: none; }
+
+  code {
+    font-family: 'JetBrains Mono', 'SFMono-Regular', Consolas, monospace;
+    font-size: 13px;
+    background: var(--color-code-bg);
+    border: 1px solid var(--color-code-border);
+    border-radius: 4px;
+    padding: 1px 5px;
+    color: var(--color-text);
+  }
+
+  pre {
+    font-family: 'JetBrains Mono', 'SFMono-Regular', Consolas, monospace;
+    font-size: 12.5px;
+    background: var(--color-code-bg);
+    border: 1px solid var(--color-code-border);
+    border-radius: 6px;
+    padding: 14px 18px;
+    line-height: 1.55;
+    overflow: hidden;
+  }
+
+  pre code {
+    border: none;
+    padding: 0;
+    background: transparent;
+    font-size: inherit;
+  }
+
+  blockquote {
+    font-size: 15px;
+    color: var(--color-muted);
+    border-left: 3px solid var(--color-accent);
+    margin: 12px 0;
+    padding: 6px 16px;
+    background: var(--color-surface);
+    border-radius: 0 6px 6px 0;
+  }
+
+  blockquote strong { color: var(--color-accent); }
+
+  table {
+    font-size: 14px;
+    border-collapse: collapse;
+    width: 100%;
+    margin: 12px 0;
+  }
+
+  th {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    padding: 7px 14px;
+    font-weight: 600;
+    text-align: left;
+    color: var(--color-text);
+  }
+
+  td {
+    border: 1px solid var(--color-border);
+    padding: 6px 14px;
+    color: var(--color-text);
+  }
+
+  tr:nth-child(even) td { background: var(--color-surface); }
+
+  ul, ol { padding-left: 20px; margin: 8px 0; }
+
+  li { margin: 4px 0; }
+
+  section.title {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    text-align: left;
+    background: var(--color-bg);
+  }
+
+  section.title h1 {
+    font-size: 42px;
+    border-bottom: 3px solid var(--color-accent);
+    color: var(--color-text);
+  }
+
+  section.title h3 { color: var(--color-muted); font-weight: 400; }
+
+  .slide-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--color-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 6px;
+  }
 ---
 
 # Agentic Security Control Plane
@@ -19,24 +169,23 @@ style: |
 
 ## Table of Contents
 
-- **1** · Title · `0:00`
-- **2** · The problem · `0:30`
-- **3** · This is what an attack looks like · `1:30`
-- **4** · What happens without a control plane · `2:30`
-- **5** · What we built · `3:15`
-- **6** · Check 1 — Egress allowlist · `4:00`
-- **7** · Check 2 — Prompt carrier scan · `4:45`
-- **8** · Check 3 — Provenance token · `5:30`
-- **9** · Active vs. Monitor mode · `6:15`
-- **10** · Live demo · `6:45`
-- **11** · Why this architecture · `8:00`
-- **12** · Where this sits in the stack · `8:45`
-- **13** · What this maps to in production · `9:15`
-- **14** · Status + next · `9:45`
+- The problem · `0:30`
+- This is what an attack looks like · `1:30`
+- What happens without a control plane · `2:30`
+- What we built · `3:15`
+- Check 1 — Egress allowlist · `4:00`
+- Check 2 — Prompt carrier scan · `4:45`
+- Check 3 — Provenance token · `5:30`
+- Active vs. Monitor mode · `6:15`
+-  Live demo · `6:45`
+-  Why this architecture · `8:00`
+-  Where this sits in the stack · `8:45`
+-  What this maps to in production · `9:15`
+-  Status + next · `9:45`
 
 ---
 
-## Slide 1 / 14
+<!-- _class: title -->
 
 # Agentic Security Control Plane
 ### A runtime policy layer for autonomous agents

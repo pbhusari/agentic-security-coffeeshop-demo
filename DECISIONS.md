@@ -34,7 +34,7 @@ client code, and the PDP is a co-located FastAPI process.
 deploy and potentially higher recall on known attack patterns.
 
 **Decision:** Use three independent rule-based checks: egress allowlist, prompt-carrier
-scan, canary token.
+scan, provenance token.
 
 **Reasoning:**
 - Each check captures a distinct signal with a different FP profile. Composing them
@@ -44,13 +44,13 @@ scan, canary token.
 - A classifier needs labeled training data. Without a design partner's production
   traffic, any classifier we train today will have unknown generalization. The three
   checks have honest, characterizable accuracy (see docstrings in sensor.py).
-- The egress check is provably correct (binary allowlist). The canary check has near-
-  zero FP by construction. Putting them in the same "classifier" would obscure their
-  accuracy guarantees.
+- The egress check is provably correct (binary allowlist). The provenance token check
+  has near-zero FP by construction. Putting them in the same "classifier" would obscure
+  their accuracy guarantees.
 
 ---
 
-## ADR-3: Canary tokens as an influence signal
+## ADR-3: Provenance tokens as an influence signal
 
 **Status:** Accepted
 
@@ -58,22 +58,22 @@ scan, canary token.
 content patterns). An adversary who knows the policy can craft an injection that targets
 an allowed destination with no flagged keywords.
 
-**Decision:** Inject unique per-call canary tokens into tool output and detect them in
-subsequent tool call parameters.
+**Decision:** Inject unique per-call provenance tokens into tool output and detect them
+in subsequent tool call parameters.
 
 **Reasoning:**
-- The canary operates on the influence signal rather than the destination or content
-  signal. If the LLM copies a canary into a tool call, that is direct evidence that
-  the tool call was influenced by retrieved content rather than user intent — regardless
-  of where it's going or what it says.
-- FP rate is near-zero by construction: the canary is a cryptographically random
-  8-hex-char token. The probability of a collision with legitimate user content is ~1
-  in 4 billion per call.
+- The provenance token operates on the influence signal rather than the destination or
+  content signal. If the LLM copies a provenance token into a tool call, that is direct
+  evidence that the tool call was influenced by retrieved content rather than user intent
+  — regardless of where it's going or what it says.
+- FP rate is near-zero by construction: the provenance token is a cryptographically
+  random 8-hex-char token. The probability of a collision with legitimate user content
+  is ~1 in 4 billion per call.
 - The main evasion path is LLM paraphrasing: the model follows the injected instruction
-  semantically rather than copying the canary literally. This is a real limitation and
-  is documented. It motivates semantic similarity checks in Phase 2.
-- The canary also serves as a debugging tool: it shows exactly which tool call seeded
-  the content that influenced a later call.
+  semantically rather than copying the provenance token literally. This is a real
+  limitation and is documented. It motivates semantic similarity checks in Phase 2.
+- The provenance token also serves as a debugging tool: it shows exactly which tool call
+  seeded the content that influenced a later call.
 
 ---
 

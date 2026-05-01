@@ -58,15 +58,16 @@ Three layers defend against agent compromise:
 
 2. **Action-layer policy** (this system): evaluate tool calls against declared policy.
    Operate at dispatch time. Binary for egress, tunable for carriers, near-zero FP for
-   canary. LLM-independent — the policy evaluates the call, not the model's reasoning.
+   provenance token. LLM-independent — the policy evaluates the call, not the model's reasoning.
 
 3. **Runtime sandboxes** (e.g., e2b, Firecracker): restrict what the agent process can
    do at the OS level. Operate at syscall time. Broad containment, not call-specific.
 
 These are complementary. A model-layer guardrail that misses a novel injection idiom
 is caught by the action-layer policy. An action-layer policy that allows a call to a
-permitted destination with a novel exfiltration technique is caught by the canary. A
-canary that's evaded by semantic paraphrasing is caught by the runtime sandbox. Depth
+permitted destination with a novel exfiltration technique is caught by the provenance
+token check. A provenance token check that's evaded by semantic paraphrasing is caught
+by the runtime sandbox. Depth
 of defense; different altitude; different failure modes.
 
 ## Extension to multi-agent and MCP deployments

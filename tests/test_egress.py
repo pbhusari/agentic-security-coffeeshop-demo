@@ -10,7 +10,7 @@ from fastapi.testclient import TestClient
 import sys
 sys.path.insert(0, str(__file__.replace("/tests/test_egress.py", "")))
 
-from sensor import app, _decision_log, _active_canaries
+from sensor import app, _decision_log, _active_provenance_tokens
 
 client = TestClient(app)
 

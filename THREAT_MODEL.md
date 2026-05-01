@@ -76,8 +76,8 @@ framing, HTML comment hiding, and exfiltration via http_get.
 |--------|-----------------------|
 | Exfiltration to undeclared destination | check_egress (binary) |
 | Injection patterns in retrieved content | check_prompt_carrier (pattern match) |
-| LLM copying retrieved content into tool params | check_canary (influence signal) |
-| Novel injection idiom, allowed destination | check_canary (complements check_egress) |
+| LLM copying retrieved content into tool params | check_provenance_token (influence signal) |
+| Novel injection idiom, allowed destination | check_provenance_token (complements check_egress) |
 
 ## What this PDP explicitly does NOT detect
 
@@ -86,7 +86,7 @@ framing, HTML comment hiding, and exfiltration via http_get.
 | Model jailbreak via user prompt | User is trusted; model-layer concern |
 | Supply chain compromise of agent dependencies | Host security concern |
 | Exfiltration via covert channels (timing, DNS) | Network/syscall layer, not tool layer |
-| Semantic paraphrasing of canary | Evasion path; mitigated by multiple canaries or semantic similarity (Phase 2) |
+| Semantic paraphrasing of provenance token | Evasion path; mitigated by multiple tokens or semantic similarity (Phase 2) |
 | Injection that produces correct-looking benign tool calls | Low-signal; needs behavioral baselines (Phase 2) |
 | Multi-agent relay attacks | Single-agent scope; multi-agent correlation is Phase 2 |
 

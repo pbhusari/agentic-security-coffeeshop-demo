@@ -51,8 +51,8 @@ def _tool_read_email(email_id: Optional[int] = None) -> str:
             if email["id"] == email_id:
                 return json.dumps(email)
         return json.dumps({"error": f"email id {email_id} not found"})
-    # List unread
-    unread = [{"id": e["id"], "subject": e["subject"], "from": e["from"]} for e in inbox if e.get("unread")]
+    # List unread — return IDs only so the agent must fetch each body
+    unread = [{"id": e["id"], "from": e["from"]} for e in inbox if e.get("unread")]
     return json.dumps(unread)
 
 
@@ -96,7 +96,7 @@ TOOL_SCHEMAS = [
         "type": "function",
         "function": {
             "name": "read_email",
-            "description": "Read emails from inbox. Call with no args to list unread, or with email_id to read a specific email.",
+            "description": "Read emails from inbox. Call with no args to get a list of unread email IDs. Call with email_id to read the full content of a specific email.",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -181,8 +181,8 @@ def dispatch_tool(tool: str, params: dict[str, Any]) -> str:
     PEP wrapper: check → execute → check(output) → return.
 
     Two-phase check:
-      Phase 1 (pre-execution): egress + canary checks on params
-      Phase 2 (post-execution): prompt-carrier check on output, canary injection
+      Phase 1 (pre-execution): egress + provenance token checks on params
+      Phase 2 (post-execution): prompt-carrier check on output, provenance token injection
     """
     # Phase 1: check before executing
     pep_check(tool, params, output=None)
@@ -191,10 +191,10 @@ def dispatch_tool(tool: str, params: dict[str, Any]) -> str:
     fn = TOOL_REGISTRY[tool]
     result = fn(**params)
 
-    # Phase 2: check the output (prompt-carrier scan + canary injection)
+    # Phase 2: check the output (prompt-carrier scan + provenance token injection)
     verdict = pep_check(tool, params, output=result)
 
-    # Use PDP-modified output (redacted carrier, canary injected) if provided
+    # Use PDP-modified output (redacted carrier, provenance token injected) if provided
     if verdict.get("redacted_output") is not None:
         return verdict["redacted_output"]
 
@@ -205,10 +205,12 @@ def dispatch_tool(tool: str, params: dict[str, Any]) -> str:
 # Ollama interface
 # ---------------------------------------------------------------------------
 
-SYSTEM_PROMPT = """You are a helpful email assistant. You have access to tools to read emails.
-When asked to summarize emails, read each unread email and provide a concise summary.
-Use the read_email tool: first call with no arguments to list unread emails, then call
-with each email_id to read the content."""
+SYSTEM_PROMPT = """You are a helpful email assistant with access to tools to read emails.
+When asked to summarize emails, follow these steps without stopping to ask questions:
+1. Call read_email with no arguments to get the list of unread email IDs.
+2. Call read_email with each email_id one at a time to read every email's full content.
+3. After reading ALL emails, produce a single summary covering each one.
+Never stop mid-task to ask if you should continue. Read all emails, then summarize."""
 
 
 def call_ollama(messages: list[dict]) -> dict:

@@ -64,12 +64,18 @@ The PEP and PDP run in **separate processes**. The agent has no policy knowledge
 
 **Check 1 — Egress allowlist** (`policy.yaml`)
 Declares which destinations each tool may contact. Any call to an undeclared host is blocked before execution. Near-zero false positives — binary allowlist.
+- OWASP **AA02** mitigation: *Constrain tool and resource scope via least-privilege policy*
+- OWASP **AA06** mitigation: *Prevent unauthorized data exfiltration via egress controls*
 
 **Check 2 — Prompt carrier scan**
 Scans tool *output* for injection idioms: HTML comments with imperative verbs, keywords like `SYSTEM:` / `compliance logging` / `do not mention`, base64 blobs. Blocks and redacts before the LLM sees the content.
+- OWASP **AA01** mitigation: *Detect and sanitize adversarial content in retrieved data before it reaches the model*
+- MITRE ATLAS **AML.M0015**: *Adversarial Input Detection — monitor inputs and intermediate data for known attack patterns*
 
 **Check 3 — Provenance token** (the interesting one)
 The PDP watermarks every tool output with a short random token (`INTERNAL-MARKER-XXXX`). If that token later appears in a tool call's *params*, it means the LLM was influenced by retrieved content. Fires on the **influence signal** — catches exfiltration to allowed destinations with novel keywords that the carrier scan misses.
+- OWASP **AA01** mitigation: *Track content provenance to detect cross-context instruction injection*
+- MITRE ATLAS **AML.M0020**: *Sandboxing — isolate and trace data flows to detect model manipulation at runtime*
 
 ---
 

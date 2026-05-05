@@ -1,0 +1,18 @@
+# Check 4 — LLM-as-judge (OWASP AA01, semantic evasion)
+#
+# Sends tool output to the local Ollama model and asks whether it contains
+# injected instructions. Catches semantic paraphrase attacks that escape
+# the keyword-based carrier scan (Check 2).
+#
+# Requires Ollama running at localhost:11434 with the model pulled.
+# Set enabled: false to disable.
+
+enabled: true
+ollama_url: http://localhost:11434/api/chat
+model: qwen2.5:3b
+
+# Only judge output longer than this (chars) — skip short list responses
+min_output_length: 80
+
+# If Ollama is unreachable or times out, fail open (allow) rather than block
+fail_open: true

@@ -26,7 +26,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, StreamingResponse
 from pydantic import BaseModel
 
-from policy import Verdict, ToolCallRequest, load_policy, evaluate
+from policy import Verdict, ToolCallRequest, load_policy, evaluate_with_judge
 
 # ---------------------------------------------------------------------------
 # Session state
@@ -49,6 +49,7 @@ class DecisionLogEntry(BaseModel):
     reason: str
     check_fired: Optional[str]
     output_snippet: Optional[str]
+    judge_reason: Optional[str] = None
 
 
 # ---------------------------------------------------------------------------
@@ -73,7 +74,7 @@ app = FastAPI(title="Agentic Security PDP", lifespan=lifespan)
 @app.post("/check", response_model=Verdict)
 async def check(request: ToolCallRequest) -> Verdict:
     policy = load_policy()
-    result = evaluate(request, policy, _active_provenance_tokens)
+    result = await evaluate_with_judge(request, policy, _active_provenance_tokens)
 
     enforced_verdict = result.verdict
     if _mode == "monitor":
@@ -90,6 +91,7 @@ async def check(request: ToolCallRequest) -> Verdict:
             reason=result.reason,
             check_fired=result.check_fired,
             output_snippet=(request.output[:200] if request.output else None),
+            judge_reason=result.judge_reason,
         )
         _decision_log.append(entry)
         _persist_entry(entry)

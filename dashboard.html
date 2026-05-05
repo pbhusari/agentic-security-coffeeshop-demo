@@ -156,6 +156,7 @@
   .detail-row { margin-bottom: 4px; }
   .detail-label { color: #8b949e; }
   .detail-val { color: #c9d1d9; word-break: break-all; }
+  .detail-judge { color: #f0883e; font-style: italic; }
   .detail-snippet {
     margin-top: 6px;
     background: #161b22;
@@ -657,6 +658,7 @@
         <div class="detail-row"><span class="detail-label">call_id: </span><span class="detail-val">${entry.call_id}</span></div>
         <div class="detail-row"><span class="detail-label">check: </span><span class="detail-val">${entry.check_fired || '—'}</span></div>
         <div class="detail-row"><span class="detail-label">params: </span><span class="detail-val">${escHtml(paramsStr)}</span></div>
+        ${entry.judge_reason ? `<div class="detail-row"><span class="detail-label">🧠 judge: </span><span class="detail-val detail-judge">${escHtml(entry.judge_reason)}</span></div>` : ''}
         ${entry.output_snippet ? `<div class="detail-snippet">${escHtml(entry.output_snippet)}</div>` : ''}
       </div>
     `;

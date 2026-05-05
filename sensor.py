@@ -167,14 +167,16 @@ async def run_agent(body: dict, request: Request) -> StreamingResponse:
     """Spawn agent.py and stream its stdout as SSE for the Attack Lab tab."""
     prompt = body.get("prompt", "Summarize my unread emails.")
     replay = body.get("replay", False)
+    trace = body.get("trace", "attack")  # trace filename stem, e.g. "memory_poisoning"
 
     agent_path = Path(__file__).parent / "agent.py"
     python = Path(__file__).parent / ".venv" / "bin" / "python"
     if not python.exists():
         python = Path("python3")
 
+    traces_dir = Path(__file__).parent / "traces"
     cmd = (
-        [str(python), str(agent_path), "--replay", str(Path(__file__).parent / "traces" / "attack.json")]
+        [str(python), str(agent_path), "--replay", str(traces_dir / f"{trace}.json")]
         if replay
         else [str(python), str(agent_path), "--prompt", prompt]
     )
